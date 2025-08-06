@@ -1,0 +1,276 @@
+// Prisma Schema with Enum Types Sample
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Can be changed to mysql, sqlite, sqlserver, mongodb, cockroachdb
+  url      = env("DATABASE_URL")
+}
+
+// Define Enums
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  DELETED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  PAYPAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+  CRYPTOCURRENCY
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+  WEBHOOK
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum TicketSeverity {
+  TRIVIAL
+  MINOR
+  MAJOR
+  CRITICAL
+  BLOCKER
+}
+
+enum ProductCategory {
+  ELECTRONICS
+  CLOTHING
+  BOOKS
+  FOOD
+  HOME_GARDEN
+  SPORTS
+  TOYS
+  HEALTH_BEAUTY
+}
+
+// Role enum for user permissions
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+// Define Models
+
+model User {
+  id                       Int                       @id @default(autoincrement())
+  email                    String                    @unique
+  username                 String                    @unique
+  password                 String?
+  status                   UserStatus                @default(PENDING_VERIFICATION)
+  role                     Role                      @default(USER)
+  profile                  Profile?
+  orders                   Order[]
+  supportTickets           SupportTicket[]
+  notificationPreferences  NotificationPreference?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  
+  @@index([status])
+  @@index([role])
+}
+
+model Profile {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName   String?
+  lastName    String?
+  bio         String?
+  avatarUrl   String?
+  phoneNumber String?
+  birthDate   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Product {
+  id            Int             @id @default(autoincrement())
+  name          String
+  description   String?
+  price         Decimal         @db.Decimal(10, 2)
+  category      ProductCategory
+  stockQuantity Int             @default(0)
+  sku           String          @unique
+  isActive      Boolean         @default(true)
+  orderItems    OrderItem[]
+  reviews       Review[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([category])
+  @@index([isActive])
+}
+
+model Order {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          OrderStatus   @default(PENDING)
+  paymentMethod   PaymentMethod
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  shippingAddress String?       @db.Text
+  orderNumber     String        @unique @default(uuid())
+  orderItems      OrderItem[]
+  payment         Payment?
+  shipment        Shipment?
+  orderDate       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([status])
+  @@index([userId])
+}
+
+model OrderItem {
+  id         Int     @id @default(autoincrement())
+  orderId    Int
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  Int
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(10, 2)
+  subtotal   Decimal @db.Decimal(10, 2)
+  
+  @@unique([orderId, productId])
+}
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  orderId         Int           @unique
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  transactionId   String?       @unique
+  status          String        // Could be another enum: PENDING, COMPLETED, FAILED, REFUNDED
+  processedAt     DateTime?
+  createdAt       DateTime      @default(now())
+}
+
+model Shipment {
+  id              Int      @id @default(autoincrement())
+  orderId         Int      @unique
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  trackingNumber  String?  @unique
+  carrier         String?
+  shippedDate     DateTime?
+  deliveredDate   DateTime?
+  estimatedDelivery DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SupportTicket {
+  id          Int            @id @default(autoincrement())
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String         @db.Text
+  priority    PriorityLevel  @default(MEDIUM)
+  severity    TicketSeverity @default(MINOR)
+  assignedTo  Int?
+  resolvedAt  DateTime?
+  ticketNumber String        @unique @default(uuid())
+  comments    Comment[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  @@index([priority])
+  @@index([severity])
+}
+
+model Comment {
+  id        Int           @id @default(autoincrement())
+  ticketId  Int
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  content   String        @db.Text
+  authorId  Int
+  isInternal Boolean      @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model NotificationPreference {
+  id              Int                @id @default(autoincrement())
+  userId          Int                @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabledTypes    NotificationType[] // Array of enum values
+  quietHoursStart DateTime?          @db.Time()
+  quietHoursEnd   DateTime?          @db.Time()
+  quietDays       Weekday[]          // Array of enum values
+  emailFrequency  String?            // Could be another enum: INSTANT, DAILY, WEEKLY
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    Int
+  rating    Int      // 1-5 stars
+  title     String?
+  comment   String?  @db.Text
+  isVerified Boolean @default(false)
+  helpful   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([productId])
+  @@index([rating])
+  @@unique([productId, userId])
+}
+
+// Example of a model with composite enum usage
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  entityType  String   // e.g., "User", "Order", "Product"
+  entityId    Int
+  action      String   // e.g., "CREATE", "UPDATE", "DELETE"
+  userId      Int?
+  changes     Json?    // Store the changes as JSON
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([userId])
+}

@@ -1,0 +1,81 @@
+# tbls configuration file
+# https://github.com/k1LoW/tbls
+
+# Database connection
+dsn: postgres://user:password@localhost:5432/sample_db?sslmode=disable
+# For MySQL: mysql://user:password@localhost:3306/sample_db
+
+# Documentation settings
+docPath: docs/schema
+
+# Format for output
+format:
+  adjust: true
+  sort: true
+  
+# ER diagram settings
+er:
+  distance: 2
+  
+# Include/Exclude settings
+include:
+  - public.*
+  
+# exclude:
+#   - public.migrations
+#   - public.schema_version
+
+# Lint rules for schema
+lint:
+  enabled: true
+  rules:
+    requireTableComment:
+      enabled: true
+      exclude:
+        - public.migrations
+    requireColumnComment:
+      enabled: true
+      allOrNothing: false
+    requireIndexComment:
+      enabled: false
+    requireConstraintComment:
+      enabled: false
+    unrelatedTable:
+      enabled: true
+      allOrNothing: false
+    columnCount:
+      enabled: true
+      max: 30
+    requireColumns:
+      enabled: true
+      columns:
+        - name: created_at
+          exclude:
+            - public.migrations
+        - name: updated_at
+          exclude:
+            - public.migrations
+    labelStyleBigQuery:
+      enabled: false
+
+# Additional settings
+comments:
+  - table: users
+    comment: "System users table with authentication and profile information"
+    columns:
+      - name: status
+        comment: "User account status using enum type"
+  - table: orders
+    comment: "Customer orders with status tracking"
+    columns:
+      - name: status
+        comment: "Order fulfillment status using enum type"
+      - name: payment_method
+        comment: "Payment method selected for the order"
+  - table: support_tickets
+    comment: "Customer support ticket system"
+    columns:
+      - name: priority
+        comment: "Ticket priority level using enum type"
+      - name: severity
+        comment: "Issue severity classification"
