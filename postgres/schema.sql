@@ -18,6 +18,7 @@ CREATE TYPE user_status AS ENUM (
     'pending_verification',
     'deleted'
 );
+COMMENT ON TYPE user_status IS 'User account status enumeration - tracks the current state of user accounts in the system';
 
 CREATE TYPE order_status AS ENUM (
     'pending',
@@ -27,6 +28,7 @@ CREATE TYPE order_status AS ENUM (
     'cancelled',
     'refunded'
 );
+COMMENT ON TYPE order_status IS 'Order fulfillment status - represents the lifecycle stages of customer orders from placement to completion';
 
 CREATE TYPE payment_method AS ENUM (
     'credit_card',
