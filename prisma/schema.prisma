@@ -92,7 +92,7 @@ enum Role {
 // Define Models
 
 model User {
-  id                       Int                       @id @default(autoincrement())
+  id                       String                    @id @default(cuid())
   email                    String                    @unique
   username                 String                    @unique
   password                 String?
@@ -110,8 +110,8 @@ model User {
 }
 
 model Profile {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique
+  id          String   @id @default(cuid())
+  userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   firstName   String?
   lastName    String?
@@ -124,7 +124,7 @@ model Profile {
 }
 
 model Product {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(cuid())
   name          String
   description   String?
   price         Decimal         @db.Decimal(10, 2)
@@ -142,8 +142,8 @@ model Product {
 }
 
 model Order {
-  id              Int           @id @default(autoincrement())
-  userId          Int
+  id              String        @id @default(cuid())
+  userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   status          OrderStatus   @default(PENDING)
   paymentMethod   PaymentMethod
@@ -161,10 +161,10 @@ model Order {
 }
 
 model OrderItem {
-  id         Int     @id @default(autoincrement())
-  orderId    Int
+  id         String  @id @default(cuid())
+  orderId    String
   order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId  Int
+  productId  String
   product    Product @relation(fields: [productId], references: [id])
   quantity   Int
   unitPrice  Decimal @db.Decimal(10, 2)
@@ -174,8 +174,8 @@ model OrderItem {
 }
 
 model Payment {
-  id              Int           @id @default(autoincrement())
-  orderId         Int           @unique
+  id              String        @id @default(cuid())
+  orderId         String        @unique
   order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   amount          Decimal       @db.Decimal(10, 2)
   paymentMethod   PaymentMethod
@@ -186,8 +186,8 @@ model Payment {
 }
 
 model Shipment {
-  id              Int      @id @default(autoincrement())
-  orderId         Int      @unique
+  id              String   @id @default(cuid())
+  orderId         String   @unique
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   trackingNumber  String?  @unique
   carrier         String?
@@ -199,14 +199,14 @@ model Shipment {
 }
 
 model SupportTicket {
-  id          Int            @id @default(autoincrement())
-  userId      Int
+  id          String         @id @default(cuid())
+  userId      String
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String         @db.Text
   priority    PriorityLevel  @default(MEDIUM)
   severity    TicketSeverity @default(MINOR)
-  assignedTo  Int?
+  assignedTo  String?
   resolvedAt  DateTime?
   ticketNumber String        @unique @default(uuid())
   comments    Comment[]
@@ -218,19 +218,19 @@ model SupportTicket {
 }
 
 model Comment {
-  id        Int           @id @default(autoincrement())
-  ticketId  Int
+  id        String        @id @default(cuid())
+  ticketId  String
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   content   String        @db.Text
-  authorId  Int
+  authorId  String
   isInternal Boolean      @default(false)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
 
 model NotificationPreference {
-  id              Int                @id @default(autoincrement())
-  userId          Int                @unique
+  id              String             @id @default(cuid())
+  userId          String             @unique
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   enabledTypes    NotificationType[] // Array of enum values
   quietHoursStart DateTime?          @db.Time()
@@ -242,10 +242,10 @@ model NotificationPreference {
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
-  productId Int
+  id        String   @id @default(cuid())
+  productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    Int
+  userId    String
   rating    Int      // 1-5 stars
   title     String?
   comment   String?  @db.Text
@@ -261,11 +261,11 @@ model Review {
 
 // Example of a model with composite enum usage
 model AuditLog {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid())
   entityType  String   // e.g., "User", "Order", "Product"
-  entityId    Int
+  entityId    String
   action      String   // e.g., "CREATE", "UPDATE", "DELETE"
-  userId      Int?
+  userId      String?
   changes     Json?    // Store the changes as JSON
   ipAddress   String?
   userAgent   String?
@@ -273,4 +273,71 @@ model AuditLog {
   
   @@index([entityType, entityId])
   @@index([userId])
+}
+
+// Sample models demonstrating various @default functions
+model SampleAutoIncrement {
+  id          Int      @id @default(autoincrement())
+  name        String
+  createdAt   DateTime @default(now())
+}
+
+model SampleUUID {
+  id          String   @id @default(uuid())
+  uuid4Field  String   @default(uuid(4))
+  uuid7Field  String   @default(uuid(7))
+  name        String
+  createdAt   DateTime @default(now())
+}
+
+model SampleCUID {
+  id          String   @id @default(cuid())
+  cuid2Field  String   @default(cuid(2))
+  name        String
+  createdAt   DateTime @default(now())
+}
+
+model SampleULID {
+  id          String   @id @default(ulid())
+  name        String
+  createdAt   DateTime @default(now())
+}
+
+model SampleNanoID {
+  id          String   @id @default(nanoid())
+  size7       String   @default(nanoid(7))
+  size10      String   @default(nanoid(10))
+  name        String
+  createdAt   DateTime @default(now())
+}
+
+model SampleDBGenerated {
+  id          String   @id @default(dbgenerated("gen_random_uuid()"))
+  timestamp   DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
+  randomNum   Float    @default(dbgenerated("random()"))
+  name        String
+}
+
+model SampleTimestamps {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model SampleMixed {
+  id          String   @id @default(uuid(7))
+  autoNum     Int      @default(autoincrement()) @unique
+  cuidCode    String   @default(cuid())
+  cuid2Code   String   @default(cuid(2))
+  nanoCode    String   @default(nanoid(12))
+  ulidCode    String   @default(ulid())
+  timestamp   DateTime @default(now())
+  customSeq   Int      @default(autoincrement())
+  name        String
+  isActive    Boolean  @default(true)
+  score       Float    @default(0.0)
+  
+  @@index([autoNum])
+  @@index([timestamp])
 }
