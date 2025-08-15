@@ -1,0 +1,194 @@
+// CockroachDB Prisma Schema with sequence() function
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "cockroachdb"
+  url      = env("COCKROACHDB_URL")
+}
+
+// CockroachDB specific models using sequence() function
+
+model User {
+  id        Int      @id @default(sequence())
+  email     String   @unique
+  username  String   @unique
+  profile   Profile?
+  orders    Order[]
+  reviews   Review[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Profile {
+  id        Int     @id @default(sequence())
+  userId    Int     @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName String?
+  lastName  String?
+  bio       String?
+  avatar    String?
+  phone     String?
+  address   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          Int         @id @default(sequence())
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  sku         String      @unique
+  inventory   Inventory?
+  orderItems  OrderItem[]
+  reviews     Review[]
+  categoryId  Int
+  category    Category    @relation(fields: [categoryId], references: [id])
+  isActive    Boolean     @default(true)
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model Category {
+  id          Int       @id @default(sequence())
+  name        String    @unique
+  description String?
+  parentId    Int?
+  children    Category[] @relation("CategoryHierarchy")
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  products    Product[]
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Inventory {
+  id          Int     @id @default(sequence())
+  productId   Int     @unique
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity    Int     @default(0)
+  reserved    Int     @default(0)
+  minStock    Int     @default(10)
+  maxStock    Int     @default(1000)
+  location    String?
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id          Int         @id @default(sequence())
+  orderNumber String      @unique @default(uuid())
+  userId      Int
+  user        User        @relation(fields: [userId], references: [id])
+  status      OrderStatus @default(PENDING)
+  totalAmount Decimal     @db.Decimal(10, 2)
+  orderItems  OrderItem[]
+  payment     Payment?
+  shipping    Shipping?
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        Int     @id @default(sequence())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  discount  Decimal @default(0) @db.Decimal(5, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  
+  @@unique([orderId, productId])
+}
+
+model Payment {
+  id            Int      @id @default(sequence())
+  orderId       Int      @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Decimal  @db.Decimal(10, 2)
+  method        String   // CREDIT_CARD, PAYPAL, etc.
+  status        String   // PENDING, COMPLETED, FAILED
+  transactionId String?  @unique
+  gatewayData   Json?
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model Shipping {
+  id              Int      @id @default(sequence())
+  orderId         Int      @unique
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  trackingNumber  String?  @unique
+  carrier         String
+  method          String   // STANDARD, EXPRESS, OVERNIGHT
+  address         Json
+  cost            Decimal  @db.Decimal(8, 2)
+  estimatedDays   Int?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Review {
+  id          Int      @id @default(sequence())
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating      Int      // 1-5 stars
+  title       String?
+  content     String?
+  isVerified  Boolean  @default(false)
+  helpfulVotes Int     @default(0)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([productId, userId])
+  @@index([rating])
+}
+
+model AuditLog {
+  id         Int      @id @default(sequence())
+  tableName  String
+  recordId   Int
+  action     String   // INSERT, UPDATE, DELETE
+  oldValues  Json?
+  newValues  Json?
+  userId     Int?
+  sessionId  String?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+  
+  @@index([tableName, recordId])
+  @@index([userId])
+  @@index([timestamp])
+}
+
+// Enums
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
