@@ -93,7 +93,7 @@ COMMENT ON COLUMN users.updated_at IS 'Last modification timestamp';
 -- User profiles table
 CREATE TABLE user_profiles (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     phone VARCHAR(20),
@@ -138,7 +138,7 @@ COMMENT ON COLUMN products.is_active IS 'Whether product is available for purcha
 -- Orders table
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     order_number VARCHAR(50) UNIQUE NOT NULL,
     status order_status DEFAULT 'pending' NOT NULL,
     payment_method payment_method NOT NULL,
@@ -167,8 +167,8 @@ COMMENT ON COLUMN orders.delivered_date IS 'When the order was delivered';
 -- Order items table
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
-    order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-    product_id INTEGER REFERENCES products(id),
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES products(id),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10, 2) NOT NULL,
     discount_amount DECIMAL(10, 2) DEFAULT 0,
@@ -187,7 +187,7 @@ COMMENT ON COLUMN order_items.subtotal IS 'Line item total (quantity * unit_pric
 CREATE TABLE support_tickets (
     id SERIAL PRIMARY KEY,
     ticket_number VARCHAR(50) UNIQUE NOT NULL,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     priority priority_level DEFAULT 'medium' NOT NULL,
@@ -215,7 +215,7 @@ COMMENT ON COLUMN support_tickets.resolution_notes IS 'Notes about how the issue
 -- Notification preferences table
 CREATE TABLE notification_preferences (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     channels notification_channel[] DEFAULT '{email, in_app}',
     email_frequency VARCHAR(20) DEFAULT 'instant',
     quiet_hours_start TIME,
