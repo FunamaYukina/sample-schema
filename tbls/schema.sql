@@ -2,7 +2,6 @@
 -- This schema includes comprehensive comments for documentation generation
 
 -- Create custom enum types with comments
-COMMENT ON TYPE user_status IS 'Enumeration of possible user account statuses';
 CREATE TYPE user_status AS ENUM (
     'active',
     'inactive', 
@@ -10,8 +9,8 @@ CREATE TYPE user_status AS ENUM (
     'pending_verification',
     'deleted'
 );
+COMMENT ON TYPE user_status IS 'Enumeration of possible user account statuses';
 
-COMMENT ON TYPE order_status IS 'Enumeration of order fulfillment statuses';
 CREATE TYPE order_status AS ENUM (
     'pending',
     'processing',
@@ -20,8 +19,8 @@ CREATE TYPE order_status AS ENUM (
     'cancelled',
     'refunded'
 );
+COMMENT ON TYPE order_status IS 'Enumeration of order fulfillment statuses';
 
-COMMENT ON TYPE payment_method IS 'Available payment methods for orders';
 CREATE TYPE payment_method AS ENUM (
     'credit_card',
     'debit_card',
@@ -30,8 +29,8 @@ CREATE TYPE payment_method AS ENUM (
     'cash_on_delivery',
     'cryptocurrency'
 );
+COMMENT ON TYPE payment_method IS 'Available payment methods for orders';
 
-COMMENT ON TYPE priority_level IS 'Priority levels for support tickets';
 CREATE TYPE priority_level AS ENUM (
     'low',
     'medium',
@@ -39,8 +38,8 @@ CREATE TYPE priority_level AS ENUM (
     'urgent',
     'critical'
 );
+COMMENT ON TYPE priority_level IS 'Priority levels for support tickets';
 
-COMMENT ON TYPE ticket_severity IS 'Severity classification for support issues';
 CREATE TYPE ticket_severity AS ENUM (
     'trivial',
     'minor',
@@ -48,8 +47,8 @@ CREATE TYPE ticket_severity AS ENUM (
     'critical',
     'blocker'
 );
+COMMENT ON TYPE ticket_severity IS 'Severity classification for support issues';
 
-COMMENT ON TYPE product_category IS 'Product categorization enum';
 CREATE TYPE product_category AS ENUM (
     'electronics',
     'clothing',
@@ -60,8 +59,8 @@ CREATE TYPE product_category AS ENUM (
     'toys',
     'health_beauty'
 );
+COMMENT ON TYPE product_category IS 'Product categorization enum';
 
-COMMENT ON TYPE notification_channel IS 'Available notification delivery channels';
 CREATE TYPE notification_channel AS ENUM (
     'email',
     'sms',
@@ -69,6 +68,7 @@ CREATE TYPE notification_channel AS ENUM (
     'in_app',
     'webhook'
 );
+COMMENT ON TYPE notification_channel IS 'Available notification delivery channels';
 
 -- Create tables with comprehensive comments
 

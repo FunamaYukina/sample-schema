@@ -1,0 +1,1219 @@
+{
+  "name": "sample_db",
+  "tables": [
+    {
+      "name": "public.audit_logs",
+      "type": "BASE TABLE",
+      "comment": "System-wide audit trail for data changes",
+      "columns": [
+        {
+          "name": "action",
+          "type": "varchar(20)",
+          "nullable": false,
+          "comment": "Type of action (INSERT, UPDATE, DELETE)"
+        },
+        {
+          "name": "changes",
+          "type": "jsonb",
+          "nullable": true,
+          "comment": "JSON object containing before/after values"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('audit_logs_id_seq'::regclass)"
+        },
+        {
+          "name": "ip_address",
+          "type": "inet",
+          "nullable": true,
+          "comment": "IP address of the user"
+        },
+        {
+          "name": "record_id",
+          "type": "integer",
+          "nullable": false,
+          "comment": "ID of the affected record"
+        },
+        {
+          "name": "table_name",
+          "type": "varchar(100)",
+          "nullable": false,
+          "comment": "Table where change occurred"
+        },
+        {
+          "name": "user_agent",
+          "type": "text",
+          "nullable": true,
+          "comment": "Browser/client information"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "User who made the change"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "audit_logs_pkey",
+          "def": "CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)",
+          "table": "public.audit_logs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_audit_logs_table_record",
+          "def": "CREATE INDEX idx_audit_logs_table_record ON public.audit_logs USING btree (table_name, record_id)",
+          "table": "public.audit_logs",
+          "columns": [
+            "table_name",
+            "record_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "audit_logs_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.audit_logs",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "audit_logs_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id)",
+          "table": "public.audit_logs",
+          "referenced_table": "users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.notification_preferences",
+      "type": "BASE TABLE",
+      "comment": "User notification settings and preferences",
+      "columns": [
+        {
+          "name": "channels",
+          "type": "notification_channel[]",
+          "nullable": true,
+          "default": "'{email,in_app}'::notification_channel[]",
+          "comment": "Array of enabled notification channels (enum[])"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "email_frequency",
+          "type": "varchar(20)",
+          "nullable": true,
+          "default": "'instant'::character varying",
+          "comment": "Email batch frequency (instant, daily, weekly)"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('notification_preferences_id_seq'::regclass)"
+        },
+        {
+          "name": "quiet_hours_end",
+          "type": "time without time zone",
+          "nullable": true,
+          "comment": "End of do-not-disturb period"
+        },
+        {
+          "name": "quiet_hours_start",
+          "type": "time without time zone",
+          "nullable": true,
+          "comment": "Start of do-not-disturb period"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "User these preferences belong to"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "notification_preferences_pkey",
+          "def": "CREATE UNIQUE INDEX notification_preferences_pkey ON public.notification_preferences USING btree (id)",
+          "table": "public.notification_preferences",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notification_preferences_user_id_key",
+          "def": "CREATE UNIQUE INDEX notification_preferences_user_id_key ON public.notification_preferences USING btree (user_id)",
+          "table": "public.notification_preferences",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "notification_preferences_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.notification_preferences",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notification_preferences_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.notification_preferences",
+          "referenced_table": "users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notification_preferences_user_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (user_id)",
+          "table": "public.notification_preferences",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.order_items",
+      "type": "BASE TABLE",
+      "comment": "Individual line items within an order",
+      "columns": [
+        {
+          "name": "discount_amount",
+          "type": "numeric(10,2)",
+          "nullable": true,
+          "default": "0",
+          "comment": "Discount applied to this line item"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('order_items_id_seq'::regclass)"
+        },
+        {
+          "name": "order_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Parent order reference"
+        },
+        {
+          "name": "product_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Product being ordered"
+        },
+        {
+          "name": "quantity",
+          "type": "integer",
+          "nullable": false,
+          "comment": "Number of units ordered"
+        },
+        {
+          "name": "subtotal",
+          "type": "numeric(10,2)",
+          "nullable": false,
+          "comment": "Line item total (quantity * unit_price - discount)"
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(10,2)",
+          "nullable": false,
+          "comment": "Price per unit at time of order"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "order_items_pkey",
+          "def": "CREATE UNIQUE INDEX order_items_pkey ON public.order_items USING btree (id)",
+          "table": "public.order_items",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "order_items_order_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE",
+          "table": "public.order_items",
+          "referenced_table": "orders",
+          "columns": [
+            "order_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "order_items_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.order_items",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "order_items_product_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (product_id) REFERENCES products(id)",
+          "table": "public.order_items",
+          "referenced_table": "products",
+          "columns": [
+            "product_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "order_items_quantity_check",
+          "type": "CHECK",
+          "def": "CHECK ((quantity \u003e 0))",
+          "table": "public.order_items",
+          "referenced_table": "",
+          "columns": [
+            "quantity"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.orders",
+      "type": "BASE TABLE",
+      "comment": "Customer orders with status and payment tracking",
+      "columns": [
+        {
+          "name": "delivered_date",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "comment": "When the order was delivered"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('orders_id_seq'::regclass)",
+          "comment": "Unique order identifier"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true,
+          "comment": "Additional order notes or special instructions"
+        },
+        {
+          "name": "order_date",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "comment": "When the order was placed"
+        },
+        {
+          "name": "order_number",
+          "type": "varchar(50)",
+          "nullable": false,
+          "comment": "Human-readable order reference number"
+        },
+        {
+          "name": "payment_method",
+          "type": "payment_method",
+          "nullable": false,
+          "comment": "Payment method used (enum)"
+        },
+        {
+          "name": "shipped_date",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "comment": "When the order was shipped"
+        },
+        {
+          "name": "shipping_address",
+          "type": "text",
+          "nullable": true,
+          "comment": "Delivery address for the order"
+        },
+        {
+          "name": "status",
+          "type": "order_status",
+          "nullable": false,
+          "default": "'pending'::order_status",
+          "comment": "Current order status (enum: pending, processing, shipped, delivered, cancelled, refunded)"
+        },
+        {
+          "name": "total_amount",
+          "type": "numeric(10,2)",
+          "nullable": false,
+          "comment": "Total order value including tax and shipping"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Customer who placed the order"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_orders_order_date",
+          "def": "CREATE INDEX idx_orders_order_date ON public.orders USING btree (order_date)",
+          "table": "public.orders",
+          "columns": [
+            "order_date"
+          ]
+        },
+        {
+          "name": "idx_orders_status",
+          "def": "CREATE INDEX idx_orders_status ON public.orders USING btree (status)",
+          "table": "public.orders",
+          "columns": [
+            "status"
+          ],
+          "comment": "Index for filtering orders by status"
+        },
+        {
+          "name": "idx_orders_user_id",
+          "def": "CREATE INDEX idx_orders_user_id ON public.orders USING btree (user_id)",
+          "table": "public.orders",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "orders_order_number_key",
+          "def": "CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number)",
+          "table": "public.orders",
+          "columns": [
+            "order_number"
+          ]
+        },
+        {
+          "name": "orders_pkey",
+          "def": "CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id)",
+          "table": "public.orders",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "orders_order_number_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (order_number)",
+          "table": "public.orders",
+          "referenced_table": "",
+          "columns": [
+            "order_number"
+          ]
+        },
+        {
+          "name": "orders_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.orders",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "orders_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.orders",
+          "referenced_table": "users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.products",
+      "type": "BASE TABLE",
+      "comment": "Product catalog with inventory tracking",
+      "columns": [
+        {
+          "name": "category",
+          "type": "product_category",
+          "nullable": false,
+          "comment": "Product category classification (enum)"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "comment": "Detailed product description"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('products_id_seq'::regclass)",
+          "comment": "Unique product identifier"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "comment": "Whether product is available for purchase"
+        },
+        {
+          "name": "name",
+          "type": "varchar(255)",
+          "nullable": false,
+          "comment": "Product display name"
+        },
+        {
+          "name": "price",
+          "type": "numeric(10,2)",
+          "nullable": false,
+          "comment": "Current product price"
+        },
+        {
+          "name": "sku",
+          "type": "varchar(100)",
+          "nullable": true,
+          "comment": "Stock keeping unit for inventory management"
+        },
+        {
+          "name": "stock_quantity",
+          "type": "integer",
+          "nullable": true,
+          "default": "0",
+          "comment": "Available inventory count"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_products_category",
+          "def": "CREATE INDEX idx_products_category ON public.products USING btree (category)",
+          "table": "public.products",
+          "columns": [
+            "category"
+          ],
+          "comment": "Index for filtering products by category"
+        },
+        {
+          "name": "idx_products_is_active",
+          "def": "CREATE INDEX idx_products_is_active ON public.products USING btree (is_active)",
+          "table": "public.products",
+          "columns": [
+            "is_active"
+          ]
+        },
+        {
+          "name": "products_pkey",
+          "def": "CREATE UNIQUE INDEX products_pkey ON public.products USING btree (id)",
+          "table": "public.products",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "products_sku_key",
+          "def": "CREATE UNIQUE INDEX products_sku_key ON public.products USING btree (sku)",
+          "table": "public.products",
+          "columns": [
+            "sku"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "products_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.products",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "products_sku_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (sku)",
+          "table": "public.products",
+          "referenced_table": "",
+          "columns": [
+            "sku"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.support_tickets",
+      "type": "BASE TABLE",
+      "comment": "Customer support ticket tracking system",
+      "columns": [
+        {
+          "name": "assigned_to",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Support agent handling the ticket"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": false,
+          "comment": "Detailed issue description"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('support_tickets_id_seq'::regclass)"
+        },
+        {
+          "name": "priority",
+          "type": "priority_level",
+          "nullable": false,
+          "default": "'medium'::priority_level",
+          "comment": "Ticket priority (enum: low, medium, high, urgent, critical)"
+        },
+        {
+          "name": "resolution_notes",
+          "type": "text",
+          "nullable": true,
+          "comment": "Notes about how the issue was resolved"
+        },
+        {
+          "name": "resolved_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "comment": "When the ticket was resolved"
+        },
+        {
+          "name": "severity",
+          "type": "ticket_severity",
+          "nullable": false,
+          "default": "'minor'::ticket_severity",
+          "comment": "Issue severity (enum: trivial, minor, major, critical, blocker)"
+        },
+        {
+          "name": "status",
+          "type": "varchar(50)",
+          "nullable": true,
+          "default": "'open'::character varying",
+          "comment": "Current ticket status"
+        },
+        {
+          "name": "ticket_number",
+          "type": "varchar(50)",
+          "nullable": false,
+          "comment": "Human-readable ticket reference"
+        },
+        {
+          "name": "title",
+          "type": "varchar(255)",
+          "nullable": false,
+          "comment": "Brief ticket summary"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Customer who created the ticket"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_tickets_assigned_to",
+          "def": "CREATE INDEX idx_tickets_assigned_to ON public.support_tickets USING btree (assigned_to)",
+          "table": "public.support_tickets",
+          "columns": [
+            "assigned_to"
+          ]
+        },
+        {
+          "name": "idx_tickets_priority",
+          "def": "CREATE INDEX idx_tickets_priority ON public.support_tickets USING btree (priority)",
+          "table": "public.support_tickets",
+          "columns": [
+            "priority"
+          ],
+          "comment": "Index for filtering tickets by priority"
+        },
+        {
+          "name": "idx_tickets_severity",
+          "def": "CREATE INDEX idx_tickets_severity ON public.support_tickets USING btree (severity)",
+          "table": "public.support_tickets",
+          "columns": [
+            "severity"
+          ]
+        },
+        {
+          "name": "support_tickets_pkey",
+          "def": "CREATE UNIQUE INDEX support_tickets_pkey ON public.support_tickets USING btree (id)",
+          "table": "public.support_tickets",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "support_tickets_ticket_number_key",
+          "def": "CREATE UNIQUE INDEX support_tickets_ticket_number_key ON public.support_tickets USING btree (ticket_number)",
+          "table": "public.support_tickets",
+          "columns": [
+            "ticket_number"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "support_tickets_assigned_to_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (assigned_to) REFERENCES users(id)",
+          "table": "public.support_tickets",
+          "referenced_table": "users",
+          "columns": [
+            "assigned_to"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "support_tickets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.support_tickets",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "support_tickets_ticket_number_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (ticket_number)",
+          "table": "public.support_tickets",
+          "referenced_table": "",
+          "columns": [
+            "ticket_number"
+          ]
+        },
+        {
+          "name": "support_tickets_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.support_tickets",
+          "referenced_table": "users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.user_profiles",
+      "type": "BASE TABLE",
+      "comment": "Extended user profile information",
+      "columns": [
+        {
+          "name": "avatar_url",
+          "type": "varchar(500)",
+          "nullable": true,
+          "comment": "URL to user avatar image"
+        },
+        {
+          "name": "bio",
+          "type": "text",
+          "nullable": true,
+          "comment": "User biography or description"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "first_name",
+          "type": "varchar(100)",
+          "nullable": true,
+          "comment": "User first name"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('user_profiles_id_seq'::regclass)"
+        },
+        {
+          "name": "last_name",
+          "type": "varchar(100)",
+          "nullable": true,
+          "comment": "User last name"
+        },
+        {
+          "name": "phone",
+          "type": "varchar(20)",
+          "nullable": true,
+          "comment": "Contact phone number"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Reference to users table"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "user_profiles_pkey",
+          "def": "CREATE UNIQUE INDEX user_profiles_pkey ON public.user_profiles USING btree (id)",
+          "table": "public.user_profiles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_profiles_user_id_key",
+          "def": "CREATE UNIQUE INDEX user_profiles_user_id_key ON public.user_profiles USING btree (user_id)",
+          "table": "public.user_profiles",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "user_profiles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.user_profiles",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_profiles_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.user_profiles",
+          "referenced_table": "users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_profiles_user_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (user_id)",
+          "table": "public.user_profiles",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.users",
+      "type": "BASE TABLE",
+      "comment": "System users with authentication and account status management",
+      "columns": [
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "comment": "Timestamp of user registration"
+        },
+        {
+          "name": "email",
+          "type": "varchar(255)",
+          "nullable": false,
+          "comment": "User email address for authentication"
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('users_id_seq'::regclass)",
+          "comment": "Unique user identifier"
+        },
+        {
+          "name": "status",
+          "type": "user_status",
+          "nullable": false,
+          "default": "'pending_verification'::user_status",
+          "comment": "Current account status (enum: active, inactive, suspended, pending_verification, deleted)"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "comment": "Last modification timestamp"
+        },
+        {
+          "name": "username",
+          "type": "varchar(100)",
+          "nullable": false,
+          "comment": "Unique username for display purposes"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_users_status",
+          "def": "CREATE INDEX idx_users_status ON public.users USING btree (status)",
+          "table": "public.users",
+          "columns": [
+            "status"
+          ],
+          "comment": "Index for filtering users by status"
+        },
+        {
+          "name": "users_email_key",
+          "def": "CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)",
+          "table": "public.users",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "users_pkey",
+          "def": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)",
+          "table": "public.users",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "users_username_key",
+          "def": "CREATE UNIQUE INDEX users_username_key ON public.users USING btree (username)",
+          "table": "public.users",
+          "columns": [
+            "username"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "users_email_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (email)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "users_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "users_username_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (username)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "username"
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "table": "public.audit_logs",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id)"
+    },
+    {
+      "table": "public.notification_preferences",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.order_items",
+      "columns": [
+        "product_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.products",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (product_id) REFERENCES products(id)"
+    },
+    {
+      "table": "public.order_items",
+      "columns": [
+        "order_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.orders",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.orders",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.support_tickets",
+      "columns": [
+        "assigned_to"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (assigned_to) REFERENCES users(id)"
+    },
+    {
+      "table": "public.support_tickets",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.user_profiles",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    }
+  ],
+  "enums": [
+    {
+      "name": "public.notification_channel",
+      "values": [
+        "webhook",
+        "in_app",
+        "push",
+        "email",
+        "sms"
+      ]
+    },
+    {
+      "name": "public.order_status",
+      "values": [
+        "pending",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "refunded"
+      ]
+    },
+    {
+      "name": "public.payment_method",
+      "values": [
+        "credit_card",
+        "debit_card",
+        "paypal",
+        "bank_transfer",
+        "cash_on_delivery",
+        "cryptocurrency"
+      ]
+    },
+    {
+      "name": "public.priority_level",
+      "values": [
+        "urgent",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    {
+      "name": "public.product_category",
+      "values": [
+        "food",
+        "home_garden",
+        "sports",
+        "toys",
+        "health_beauty",
+        "electronics",
+        "clothing",
+        "books"
+      ]
+    },
+    {
+      "name": "public.ticket_severity",
+      "values": [
+        "trivial",
+        "minor",
+        "major",
+        "critical",
+        "blocker"
+      ]
+    },
+    {
+      "name": "public.user_status",
+      "values": [
+        "active",
+        "deleted",
+        "pending_verification",
+        "suspended",
+        "inactive"
+      ]
+    }
+  ],
+  "driver": {
+    "name": "postgres",
+    "database_version": "PostgreSQL 14.17 (Homebrew) on aarch64-apple-darwin23.6.0, compiled by Apple clang version 16.0.0 (clang-1600.0.26.6), 64-bit",
+    "meta": {
+      "current_schema": "public",
+      "search_paths": [
+        "user",
+        "public"
+      ],
+      "dict": {
+        "Functions": "Stored procedures and functions"
+      }
+    }
+  }
+}
