@@ -1,5 +1,8 @@
 -- PostgreSQL Schema with Enum Types Sample
 
+-- Create UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Drop existing types if they exist (for idempotent execution)
 DROP TYPE IF EXISTS user_status CASCADE;
 DROP TYPE IF EXISTS order_status CASCADE;
@@ -94,10 +97,10 @@ DROP TABLE IF EXISTS users CASCADE;
 
 -- Create Tables using Enum Types
 
--- Users table with status enum
+-- Users table with status enum and UUID primary key
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
     username VARCHAR(100) UNIQUE NOT NULL,
     status user_status DEFAULT 'pending_verification' NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -118,7 +121,7 @@ CREATE TABLE products (
 -- Orders table with status and payment method enums
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     status order_status DEFAULT 'pending' NOT NULL,
     payment_method payment_method NOT NULL,
     total_amount DECIMAL(10, 2) NOT NULL,
@@ -140,7 +143,7 @@ CREATE TABLE order_items (
 -- Support tickets with priority and severity enums
 CREATE TABLE support_tickets (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     priority priority_level DEFAULT 'medium' NOT NULL,
@@ -154,7 +157,7 @@ CREATE TABLE support_tickets (
 -- Notification preferences with array of enum types
 CREATE TABLE notification_preferences (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     enabled_types notification_type[] DEFAULT '{email, in_app}',
     quiet_hours_start TIME,
     quiet_hours_end TIME,
@@ -191,7 +194,7 @@ CREATE OR REPLACE FUNCTION get_orders_by_status(
     p_status order_status
 ) RETURNS TABLE (
     order_id INTEGER,
-    user_id INTEGER,
+    user_id UUID,
     total_amount DECIMAL,
     order_date TIMESTAMP
 ) AS $$
@@ -225,12 +228,17 @@ CREATE TRIGGER update_tickets_updated_at BEFORE UPDATE ON support_tickets
 CREATE TRIGGER update_notification_preferences_updated_at BEFORE UPDATE ON notification_preferences
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert sample data
-INSERT INTO users (email, username, status) VALUES
-    ('john.doe@example.com', 'johndoe', 'active'),
-    ('jane.smith@example.com', 'janesmith', 'active'),
-    ('bob.wilson@example.com', 'bobwilson', 'pending_verification'),
-    ('alice.brown@example.com', 'alicebrown', 'suspended');
+-- Insert sample data with UUIDs
+-- First, insert users and capture their UUIDs using a temporary table approach
+WITH inserted_users AS (
+    INSERT INTO users (email, username, status) VALUES
+        ('john.doe@example.com', 'johndoe', 'active'),
+        ('jane.smith@example.com', 'janesmith', 'active'),
+        ('bob.wilson@example.com', 'bobwilson', 'pending_verification'),
+        ('alice.brown@example.com', 'alicebrown', 'suspended')
+    RETURNING id, email
+)
+SELECT id, email FROM inserted_users;
 
 INSERT INTO products (name, description, price, category, stock_quantity) VALUES
     ('Laptop Pro 15', 'High-performance laptop', 1299.99, 'electronics', 10),
@@ -238,23 +246,67 @@ INSERT INTO products (name, description, price, category, stock_quantity) VALUES
     ('Organic Shampoo', 'Natural hair care product', 12.99, 'health_beauty', 50),
     ('Programming Book', 'Learn PostgreSQL', 45.99, 'books', 15);
 
-INSERT INTO orders (user_id, status, payment_method, total_amount, shipping_address) VALUES
-    (1, 'delivered', 'credit_card', 1299.99, '123 Main St, City, Country'),
-    (2, 'processing', 'paypal', 89.99, '456 Oak Ave, Town, Country'),
-    (1, 'pending', 'bank_transfer', 58.98, '123 Main St, City, Country');
+-- Insert orders using actual user UUIDs
+INSERT INTO orders (user_id, status, payment_method, total_amount, shipping_address) 
+SELECT 
+    u.id,
+    o.status,
+    o.payment_method,
+    o.total_amount,
+    o.shipping_address
+FROM users u
+CROSS JOIN (VALUES
+    ('john.doe@example.com', 'delivered', 'credit_card', 1299.99, '123 Main St, City, Country'),
+    ('jane.smith@example.com', 'processing', 'paypal', 89.99, '456 Oak Ave, Town, Country'),
+    ('john.doe@example.com', 'pending', 'bank_transfer', 58.98, '123 Main St, City, Country')
+) AS o(user_email, status, payment_method, total_amount, shipping_address)
+WHERE u.email = o.user_email;
 
-INSERT INTO order_items (order_id, product_id, quantity, unit_price, subtotal) VALUES
+-- Insert order items using order IDs (orders table still uses SERIAL for id)
+INSERT INTO order_items (order_id, product_id, quantity, unit_price, subtotal) 
+SELECT 
+    o.id,
+    oi.product_id,
+    oi.quantity,
+    oi.unit_price,
+    oi.subtotal
+FROM orders o
+CROSS JOIN (VALUES
     (1, 1, 1, 1299.99, 1299.99),
     (2, 2, 1, 89.99, 89.99),
     (3, 3, 2, 12.99, 25.98),
-    (3, 4, 1, 45.99, 45.99);
+    (3, 4, 1, 45.99, 45.99)
+) AS oi(order_num, product_id, quantity, unit_price, subtotal)
+WHERE o.id = oi.order_num;
 
-INSERT INTO support_tickets (user_id, title, description, priority, severity) VALUES
-    (1, 'Cannot login', 'Getting error when trying to login', 'high', 'major'),
-    (2, 'Shipping delay', 'Order has not arrived yet', 'medium', 'minor'),
-    (3, 'Feature request', 'Add dark mode to website', 'low', 'trivial');
+-- Insert support tickets using user UUIDs
+INSERT INTO support_tickets (user_id, title, description, priority, severity) 
+SELECT 
+    u.id,
+    t.title,
+    t.description,
+    t.priority,
+    t.severity
+FROM users u
+CROSS JOIN (VALUES
+    ('john.doe@example.com', 'Cannot login', 'Getting error when trying to login', 'high', 'major'),
+    ('jane.smith@example.com', 'Shipping delay', 'Order has not arrived yet', 'medium', 'minor'),
+    ('bob.wilson@example.com', 'Feature request', 'Add dark mode to website', 'low', 'trivial')
+) AS t(user_email, title, description, priority, severity)
+WHERE u.email = t.user_email;
 
-INSERT INTO notification_preferences (user_id, enabled_types, quiet_hours_start, quiet_hours_end, quiet_days) VALUES
-    (1, '{email, push, in_app}', '22:00', '08:00', '{saturday, sunday}'),
-    (2, '{email}', '23:00', '07:00', '{}'),
-    (3, '{email, sms, push}', NULL, NULL, NULL);
+-- Insert notification preferences using user UUIDs
+INSERT INTO notification_preferences (user_id, enabled_types, quiet_hours_start, quiet_hours_end, quiet_days) 
+SELECT 
+    u.id,
+    n.enabled_types,
+    n.quiet_hours_start,
+    n.quiet_hours_end,
+    n.quiet_days
+FROM users u
+CROSS JOIN (VALUES
+    ('john.doe@example.com', '{email, push, in_app}', '22:00'::TIME, '08:00'::TIME, '{saturday, sunday}'),
+    ('jane.smith@example.com', '{email}', '23:00'::TIME, '07:00'::TIME, '{}'),
+    ('bob.wilson@example.com', '{email, sms, push}', NULL, NULL, NULL)
+) AS n(user_email, enabled_types, quiet_hours_start, quiet_hours_end, quiet_days)
+WHERE u.email = n.user_email;
