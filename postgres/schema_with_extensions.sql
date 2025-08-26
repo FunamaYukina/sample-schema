@@ -322,4 +322,4 @@ COMMENT ON TABLE notifications IS 'Real-time notifications with LISTEN/NOTIFY su
 COMMENT ON TABLE analytics_events IS 'Time-series analytics data with partitioning';
 COMMENT ON TABLE recommendations IS 'AI-powered content recommendations using vector similarity';
 COMMENT ON COLUMN users.profile_embedding IS 'Vector embedding representing user profile for recommendation algorithms';
-COMMENTongresql";
+COMMENT ON COLUMN content.content_embedding IS 'Vector embedding for semantic search using OpenAI or similar models';
